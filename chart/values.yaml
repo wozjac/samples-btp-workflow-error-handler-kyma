@@ -1,0 +1,37 @@
+global:
+  domain: da0a435.kyma.ondemand.com
+  imagePullSecret:
+    name: regcred
+srv:
+  bindings:
+    destination:
+      serviceInstanceName: destination
+    auth:
+      serviceInstanceName: xsuaa
+  image:
+    repository: wozjac/wf-error-handler
+    tag: 1.0.8
+  resources:
+    limits:
+      ephemeral-storage: 1G
+      memory: 500M
+    requests:
+      ephemeral-storage: 1G
+      cpu: 500m
+      memory: 500M
+  health_check:
+    liveness:
+      path: /
+    readiness:
+      path: /
+destination:
+  serviceOfferingName: destination
+  servicePlanName: lite
+  parameters:
+    version: 1.0.0
+xsuaa:
+  serviceOfferingName: xsuaa
+  servicePlanName: application
+  parameters:
+    xsappname: wf-error-handler
+  config: xs-security.json

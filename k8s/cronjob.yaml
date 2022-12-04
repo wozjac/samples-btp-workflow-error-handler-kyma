@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wr-error-handler-cronjob
+  namespace: wf
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: bb
+              image: badouralix/curl-jq
+              env:
+                - name: CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: wf-error-handler-srv-auth
+                      key: clientid
+                - name: CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: wf-error-handler-srv-auth
+                      key: clientsecret
+                - name: TOKEN_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: wf-error-handler-srv-auth
+                      key: url
+              command: ["/bin/sh"]
+              args: ["/home/call_handler.sh"]
+              volumeMounts:
+                - name: script
+                  mountPath: "/home"
+          volumes:
+            - name: script
+              configMap:
+                name: wf-error-handler-configmap
+                defaultMode: 0777
+          restartPolicy: Never
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wf-error-handler-configmap
+  namespace: wf
+data:
+  call_handler.sh: |
+    #!/bin/sh
+    token=$(curl -d client_id=$CLIENT_ID -d client_secret=$CLIENT_SECRET -d grant_type=client_credentials $TOKEN_URL/oauth/token 2>/dev/null | jq -r '.access_token')
+    curl -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d {} https://wf-error-handler-srv-wf.da0a435.kyma.ondemand.com/failed-workflows/handleErroneousWorkflows
